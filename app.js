@@ -1,5 +1,5 @@
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbzd9yMtfoPL6iiBqO63Os1qs8As8UMTbBh1j3I4JznhTHmVcVzeCBBGN-MZ56yBZ_bX/exec";
+  "https://script.google.com/macros/s/AKfycbwzdTnb5ypaUkqTRIBhBT1HjJCgXRL8BPuWWPyva71yEX9KkP1ni6C-lRxEmI-Pu_k6/exec";
 const POINTS_JSON_URL = "./badge-points-count.json";
 
 const badgeInput = document.getElementById("badgeNo");
