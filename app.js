@@ -17,28 +17,29 @@ const publishHint = document.getElementById('publishHint');
 
 let pointsData = {};
 let currentBadgeNo = null;
+let originalEmail = '';
 let formReady = false;
 
 init();
 
 async function init() {
   lockForm();
-  await loadPoints();
+  await loadPointsJson();
 }
 
-async function loadPoints() {
+async function loadPointsJson() {
   try {
     const res = await fetch(POINTS_JSON_URL);
     pointsData = await res.json();
-  } catch {
-    showError('שגיאה בטעינת נתונים');
+  } catch (err) {
+    showError('שגיאה בטעינת נתוני הנקודות. לא ניתן לשלוח בקשה כרגע.');
+    checkBtn.disabled = true;
   }
 }
 
 function lockForm() {
-  nameInput.value = '';
-  emailInput.value = '';
-  emailInput.placeholder = '';
+  badgeInput.disabled = false;
+  checkBtn.disabled = false;
 
   nameInput.disabled = true;
   emailInput.disabled = true;
@@ -46,94 +47,222 @@ function lockForm() {
   updateEmailBtn.disabled = true;
   submitBtn.disabled = true;
 
+  nameInput.value = '';
+  emailInput.value = '';
+  emailInput.placeholder = '';
   publishInput.checked = false;
 
+  pointsInfo.textContent = '';
   publishHint.classList.add('hidden');
   publishHint.textContent = '';
 
-  pointsInfo.textContent = '';
-
   currentBadgeNo = null;
+  originalEmail = '';
+  formReady = false;
 }
 
-checkBtn.onclick = checkBadge;
+checkBtn.addEventListener('click', checkBadge);
 
-resetBtn.onclick = () => {
+badgeInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    checkBadge();
+  }
+});
+
+resetBtn.addEventListener('click', function() {
   badgeInput.value = '';
   resetBtn.classList.add('hidden');
   checkBtn.classList.remove('hidden');
+  clearMsg();
   lockForm();
-};
+  badgeInput.focus();
+});
+
+emailInput.addEventListener('input', function() {
+  validateReadyToSubmit();
+  updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
+});
+
+publishInput.addEventListener('change', updatePublishHint);
 
 async function checkBadge() {
-
   const badgeNo = badgeInput.value.trim();
+
+  clearMsg();
+  pointsInfo.textContent = '';
 
   if (!badgeNo) {
     showError('יש להזין מספר יעל');
     return;
   }
 
-  try {
-    const res = await fetch(API_URL + '?badgeNo=' + badgeNo);
-    const data = await res.json();
+  checkBtn.disabled = true;
+  checkBtn.textContent = 'בודק...';
 
-    if (!data.found) {
-      showError('מספר לא קיים');
+  try {
+    const userRes = await fetch(API_URL + '?badgeNo=' + encodeURIComponent(badgeNo));
+    const userData = await userRes.json();
+
+    if (!userData.ok || !userData.found) {
+      showError('מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.');
       return;
     }
 
     const points = pointsData[badgeNo];
 
     if (!points) {
-      showError('אין נקודות');
+      showError('לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.');
       return;
     }
 
-    const parent = points.parent || 0;
-    const children = points.children || 0;
+    const parentCount = Number(points.parent || 0);
+    const childrenCount = Number(points.children || 0);
 
-    if (parent === 0 && children === 0) {
-      showError('אין נקודות');
+    if (parentCount === 0 && childrenCount === 0) {
+      showError('לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.');
       return;
     }
 
     currentBadgeNo = badgeNo;
 
-    nameInput.value = data.person.nameHe;
-    emailInput.value = data.person.email || '';
+    nameInput.value = userData.person.nameHe || '';
+    emailInput.value = userData.person.email || '';
+    originalEmail = emailInput.value.trim();
 
-    nameInput.disabled = true;
-    emailInput.disabled = false;
-    publishInput.disabled = false;
-
-    updateEmailBtn.disabled = false;
-
-    publishHint.classList.remove('hidden');
-
-    if (children > 0) {
-      pointsInfo.textContent = `נמצאו ${parent} נקודות שלך במפה ועוד ${children} נלווים.`;
-    } else {
-      pointsInfo.textContent = `נמצאו ${parent} נקודות שלך במפה.`;
-    }
-
-    updatePublishHint();
-
+    badgeInput.disabled = true;
     checkBtn.classList.add('hidden');
     resetBtn.classList.remove('hidden');
 
-    validate();
+    emailInput.disabled = false;
+    publishInput.disabled = false;
 
-  } catch {
-    showError('שגיאה');
+    if (!emailInput.value.trim()) {
+      emailInput.placeholder = 'חובה לרשום כתובת מייל תקינה';
+    }
+
+    if (childrenCount > 0) {
+      pointsInfo.textContent =
+        'נמצאו ' + parentCount + ' נקודות שלך במפה ועוד ' + childrenCount + ' נלווים.';
+    } else {
+      pointsInfo.textContent =
+        'נמצאו ' + parentCount + ' נקודות שלך במפה.';
+    }
+
+    updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
+
+    showOk('הפרטים נמצאו. ניתן להשלים אימייל ולשלוח בקשה.');
+
+    validateReadyToSubmit();
+
+  } catch (err) {
+    showError('שגיאה בבדיקת מספר יעל');
+  } finally {
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'בדיקה';
   }
 }
 
-publishInput.onchange = updatePublishHint;
+updateEmailBtn.addEventListener('click', async function() {
+  const email = emailInput.value.trim();
+
+  if (!currentBadgeNo || !isValidEmail(email)) {
+    showError('יש לרשום כתובת מייל תקינה לפני עדכון');
+    return;
+  }
+
+  updateEmailBtn.disabled = true;
+  updateEmailBtn.textContent = 'מעדכן...';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'updateEmail',
+        badgeNo: currentBadgeNo,
+        email: email
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      showError('עדכון האימייל נכשל');
+      return;
+    }
+
+    originalEmail = email;
+    showOk('האימייל עודכן ברשימה');
+
+  } catch (err) {
+    showError('שגיאה בעדכון האימייל');
+  } finally {
+    updateEmailBtn.disabled = false;
+    updateEmailBtn.textContent = 'עדכן אימייל ברשימה';
+  }
+});
+
+submitBtn.addEventListener('click', async function() {
+  validateReadyToSubmit();
+
+  if (!formReady) {
+    showError('יש להשלים כתובת מייל תקינה לפני שליחה');
+    return;
+  }
+
+  const email = emailInput.value.trim();
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'שולח...';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'submitRequest',
+        badgeNo: currentBadgeNo,
+        nameHe: nameInput.value.trim(),
+        email: email,
+        publishAllowed: publishInput.checked
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      showError('שליחת הבקשה נכשלה');
+      return;
+    }
+
+    showOk('הבקשה נשלחה בהצלחה');
+
+    resetBtn.classList.add('hidden');
+    checkBtn.classList.remove('hidden');
+    badgeInput.value = '';
+    lockForm();
+
+  } catch (err) {
+    showError('שגיאה בשליחת הבקשה');
+  } finally {
+    submitBtn.textContent = 'שליחת בקשה';
+    validateReadyToSubmit();
+  }
+});
+
+function validateReadyToSubmit() {
+  const email = emailInput.value.trim();
+
+  formReady =
+    currentBadgeNo !== null &&
+    nameInput.value.trim() !== '' &&
+    isValidEmail(email);
+
+  submitBtn.disabled = !formReady;
+}
 
 function updatePublishHint() {
   if (publishInput.checked) {
-    publishHint.textContent = 'המפה תופיע באתר';
+    publishHint.textContent = 'המפה תוכל להופיע באתר המפות האישיות';
     publishHint.className = 'publish-hint ok';
   } else {
     publishHint.textContent = 'קישור למפה ישלח רק אליך';
@@ -141,28 +270,21 @@ function updatePublishHint() {
   }
 }
 
-emailInput.oninput = validate;
-
-function validate() {
-  const email = emailInput.value.trim();
-  formReady = currentBadgeNo && email.includes('@');
-  submitBtn.disabled = !formReady;
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-updateEmailBtn.onclick = () => {
-  showOk('האימייל עודכן (בדיקה בלבד)');
-};
+function showOk(text) {
+  msg.textContent = text;
+  msg.className = 'msg ok';
+}
 
-submitBtn.onclick = () => {
-  showOk('נשלח (בדיקה)');
-};
-
-function showError(t) {
-  msg.textContent = t;
+function showError(text) {
+  msg.textContent = text;
   msg.className = 'msg error';
 }
 
-function showOk(t) {
-  msg.textContent = t;
-  msg.className = 'msg ok';
+function clearMsg() {
+  msg.textContent = '';
+  msg.className = 'msg';
 }
