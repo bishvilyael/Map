@@ -14,42 +14,42 @@
 
   <div class="row">
     <div class="field">
-      <label for="badgeNo">מספר יעל</label>
+      <label>מספר יעל</label>
       <div class="badge-line">
-        <input id="badgeNo" type="text" autocomplete="off">
-        <button id="checkBtn" type="button">בדיקה</button>
-        <button id="resetBtn" type="button" class="hidden">בדיקה מחדש</button>
+        <input id="badgeNo" type="text">
+        <button id="checkBtn">בדיקה</button>
+        <button id="resetBtn" class="hidden">בדיקה מחדש</button>
       </div>
     </div>
 
     <div class="field">
-      <label for="nameHe">שם בעברית</label>
+      <label>שם בעברית</label>
       <input id="nameHe" type="text" disabled>
     </div>
   </div>
 
   <div class="row">
     <div class="field">
-      <label for="email">אימייל</label>
+      <label>אימייל</label>
       <div class="email-line">
         <input id="email" type="email" disabled>
-        <button id="updateEmailBtn" type="button" disabled>עדכון אימייל</button>
+        <button id="updateEmailBtn" disabled>עדכון אימייל</button>
       </div>
     </div>
 
-    <div class="field checkbox-field">
+    <div class="field">
       <label class="checkbox-row">
         <input id="publishAllowed" type="checkbox" disabled>
         <span>להפיץ את המפה שלי באתר</span>
       </label>
 
-      <div id="publishHint" class="publish-hint warn"></div>
+      <div id="publishHint" class="publish-hint hidden"></div>
     </div>
   </div>
 
   <div id="pointsInfo" class="msg info"></div>
 
-  <button id="submitBtn" type="button" disabled>שליחת בקשה</button>
+  <button id="submitBtn" disabled>שליחת בקשה</button>
 
   <div id="msg" class="msg"></div>
 </div>
