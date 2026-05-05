@@ -177,11 +177,15 @@ updateEmailBtn.addEventListener('click', async function() {
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         action: 'updateEmail',
         badgeNo: currentBadgeNo,
         email: email
       })
+    });
     });
 
     const data = await res.json();
@@ -216,15 +220,19 @@ submitBtn.addEventListener('click', async function() {
   submitBtn.textContent = 'שולח...';
 
   try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'submitRequest',
-        badgeNo: currentBadgeNo,
-        nameHe: nameInput.value.trim(),
-        email: email,
-        publishAllowed: publishInput.checked
-      })
+      const res = await fetch(API_URL, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    action: 'submitRequest',
+    badgeNo: currentBadgeNo,
+    nameHe: nameInput.value.trim(),
+    email: email,
+    publishAllowed: publishInput.checked
+  })
+});
     });
 
     const data = await res.json();
