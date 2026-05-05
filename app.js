@@ -170,24 +170,29 @@ submitBtn.addEventListener("click", async function () {
     });
 
     const data = await res.json();
+    console.log("submit response:", data);
 
     if (!data.ok) {
       showError("שליחת הבקשה נכשלה");
       return;
     }
 
-	if (data.reqId) {
-	  showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
-	} else {
-	  showOk("הבקשה נשלחה בהצלחה");
-	}
+    if (data.reqId) {
+      showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
+    } else {
+      showOk("הבקשה נשלחה בהצלחה");
+    }
 
     submitBtn.textContent = "נשלח";
     submitBtn.disabled = true;
 
     lockForm();
   } catch (err) {
-    showError("שגיאה בשליחת הבקשה");
+    console.error("submitRequest failed:", err);
+    showError("שגיאה בשליחת הבקשה: " + (err.message || err));
+  } finally {
+    submitBtn.textContent = "שליחת בקשה";
+    validateReadyToSubmit();
   }
 });
 
