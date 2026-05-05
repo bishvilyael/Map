@@ -296,7 +296,7 @@ function isValidEmail(email) {
 }
 
 function showOk(text) {
-  msg.textContent = text;
+  msg.innerHTML = text;
   msg.className = "msg ok";
 }
 
