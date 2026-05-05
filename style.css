@@ -71,7 +71,9 @@ button:disabled {
   width: 100%;
   font-size: 18px;
 }
-
+#pointsInfo {
+  color: green;
+}
 .checkbox-row {
   display: flex;
   align-items: center;

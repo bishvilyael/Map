@@ -243,11 +243,16 @@ submitBtn.addEventListener("click", async function () {
       return;
     }
 
-    showOk("הבקשה נשלחה בהצלחה");
+    if (data.reqId) {
+	  showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
+	} else {
+	  showOk("הבקשה נשלחה בהצלחה");
+	}
 
     resetBtn.classList.add("hidden");
     checkBtn.classList.remove("hidden");
     badgeInput.value = "";
+	submitBtn.textContent = "שליחת בקשה";
     lockForm();
   } catch (err) {
     showError("שגיאה בשליחת הבקשה");
