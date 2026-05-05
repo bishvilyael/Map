@@ -246,9 +246,10 @@ submitBtn.addEventListener("click", async function () {
       showOk(
         "הבקשה נשלחה בהצלחה. מספר הבקשה: " +
           data.reqId +
-          "\n" +
-          "הודעת מייל עם פרטי הבקשה נשלחה אליך.\n" +
-          "הודעה נוספת עם קישור למפה תשלח בסיום הטיפול.",
+          "<br>" +
+          "הודעת מייל עם פרטי הבקשה נשלחה אליך." <
+          br >
+          "" + "הודעה נוספת עם קישור למפה תשלח בסיום הטיפול.",
       );
     } else {
       showOk(
@@ -295,7 +296,7 @@ function isValidEmail(email) {
 }
 
 function showOk(text) {
-  msg.textContent = text;
+  msg.innerHTM = text;
   msg.className = "msg ok";
 }
 
