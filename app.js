@@ -189,8 +189,8 @@ updateEmailBtn.addEventListener("click", async function () {
       body: JSON.stringify({
         action: "updateEmail",
         badgeNo: currentBadgeNo,
-        email: email
-      })
+        email: email,
+      }),
     });
 
     const data = await res.json();
@@ -210,7 +210,6 @@ updateEmailBtn.addEventListener("click", async function () {
     validateReadyToSubmit();
   }
 });
-
 submitBtn.addEventListener("click", async function () {
   validateReadyToSubmit();
 
@@ -236,30 +235,40 @@ submitBtn.addEventListener("click", async function () {
       }),
     });
 
-	if (data.reqId) {
-	  showOk(
-		"הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId + "\n" +
-		"הודעת מייל עם פרטי הבקשה נשלחה אליך.\n" +
-		"הודעה נוספת עם קישור למפה תשלח בסיום הטיפול."
-	  );
-	} else {
-	  showOk(
-		"הבקשה נשלחה בהצלחה\n" +
-		"הודעת מייל עם פרטי הבקשה נשלחה אליך.\n" +
-		"הודעה נוספת עם קישור למפה תשלח בסיום הטיפול."
-	  );
-	}
+    const data = await res.json();
+
+    if (!data.ok) {
+      showError("שליחת הבקשה נכשלה: " + (data.error || data.notifyError || ""));
+      return;
+    }
+
+    if (data.reqId) {
+      showOk(
+        "הבקשה נשלחה בהצלחה. מספר הבקשה: " +
+          data.reqId +
+          "\n" +
+          "הודעת מייל עם פרטי הבקשה נשלחה אליך.\n" +
+          "הודעה נוספת עם קישור למפה תשלח בסיום הטיפול.",
+      );
+    } else {
+      showOk(
+        "הבקשה נשלחה בהצלחה\n" +
+          "הודעת מייל עם פרטי הבקשה נשלחה אליך.\n" +
+          "הודעה נוספת עם קישור למפה תשלח בסיום הטיפול.",
+      );
+    }
 
     resetBtn.classList.add("hidden");
     checkBtn.classList.remove("hidden");
     badgeInput.value = "";
-	submitBtn.textContent = "שליחת בקשה";
+    submitBtn.textContent = "שליחת בקשה";
     lockForm();
   } catch (err) {
-    showError("שגיאה בשליחת הבקשה");
+    showError("שגיאה בשליחת הבקשה: " + (err.message || err));
+    submitBtn.textContent = "שליחת בקשה";
+    validateReadyToSubmit();
   }
 });
-
 function validateReadyToSubmit() {
   const email = emailInput.value.trim();
 
