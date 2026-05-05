@@ -2,108 +2,9 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>בקשה למפה אישית</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 760px;
-      margin: 30px auto;
-      padding: 16px;
-      direction: rtl;
-      background: #f7f7f7;
-    }
-
-    .box {
-      background: white;
-      padding: 22px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px #0002;
-    }
-
-    h1 {
-      margin-top: 0;
-      font-size: 24px;
-    }
-
-    .row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-      align-items: end;
-    }
-
-    .field label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    input[type="text"],
-    input[type="email"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 9px;
-      font-size: 16px;
-    }
-
-    input:disabled {
-      background: #eee;
-      color: #555;
-    }
-
-    .badge-line {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: 8px;
-      align-items: end;
-    }
-
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    #submitBtn {
-      margin-top: 18px;
-      width: 100%;
-      font-size: 18px;
-    }
-
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-bottom: 9px;
-      font-weight: bold;
-    }
-
-    .msg {
-      margin-top: 14px;
-      font-weight: bold;
-    }
-
-    .ok {
-      color: green;
-    }
-
-    .error {
-      color: #b00020;
-    }
-
-    .info {
-      color: #444;
-    }
-
-    @media (max-width: 650px) {
-      .row,
-      .badge-line {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -116,8 +17,8 @@
       <label for="badgeNo">מספר יעל</label>
       <div class="badge-line">
         <input id="badgeNo" type="text" autocomplete="off">
-        <button id="checkBtn">בדיקה</button>
-        <button id="resetBtn" type="button" style="display:none;">בדיקה מחדש</button>
+        <button id="checkBtn" type="button">בדיקה</button>
+        <button id="resetBtn" type="button" class="hidden">בדיקה מחדש</button>
       </div>
     </div>
 
@@ -130,243 +31,31 @@
   <div class="row">
     <div class="field">
       <label for="email">אימייל</label>
-      <input id="email" type="email" disabled>
+      <div class="email-line">
+        <input id="email" type="email" disabled>
+        <button id="updateEmailBtn" type="button" disabled>עדכן אימייל ברשימה</button>
+      </div>
     </div>
 
-    <div class="checkbox-row">
-      <input id="publishAllowed" type="checkbox" disabled>
-      <label for="publishAllowed">להפיץ את המפה שלי באתר</label>
+    <div class="field checkbox-field">
+      <label class="checkbox-row">
+        <input id="publishAllowed" type="checkbox" disabled>
+        <span>להפיץ את המפה שלי באתר</span>
+      </label>
+
+      <div id="publishHint" class="publish-hint warn">
+        קישור למפה ישלח רק אליך
+      </div>
     </div>
   </div>
 
   <div id="pointsInfo" class="msg info"></div>
 
-  <button id="submitBtn" disabled>שליחת בקשה</button>
+  <button id="submitBtn" type="button" disabled>שליחת בקשה</button>
 
   <div id="msg" class="msg"></div>
 </div>
 
-<script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbxBiYALrtPamzhLo-zM8TRXqkMi0e2i41h2GvQjjpfd25cgSdAU-E1px0nPZRYBDulO/exec';
-const POINTS_JSON_URL = './badge-points-count.json';
-
-const badgeInput = document.getElementById('badgeNo');
-const nameInput = document.getElementById('nameHe');
-const emailInput = document.getElementById('email');
-const publishInput = document.getElementById('publishAllowed');
-const checkBtn = document.getElementById('checkBtn');
-const resetBtn = document.getElementById('resetBtn');
-const submitBtn = document.getElementById('submitBtn');
-const msg = document.getElementById('msg');
-const pointsInfo = document.getElementById('pointsInfo');
-
-let pointsData = {};
-let currentBadgeNo = null;
-let originalEmail = '';
-let formReady = false;
-
-init();
-
-async function init() {
-  lockForm();
-  await loadPointsJson();
-}
-
-async function loadPointsJson() {
-  try {
-    const res = await fetch(POINTS_JSON_URL);
-    pointsData = await res.json();
-  } catch (err) {
-    showError('שגיאה בטעינת נתוני הנקודות. לא ניתן לשלוח בקשה כרגע.');
-    checkBtn.disabled = true;
-  }
-}
-
-function lockForm() {
-  badgeInput.disabled = false;
-  checkBtn.disabled = false;
-
-  nameInput.disabled = true;
-  emailInput.disabled = true;
-  publishInput.disabled = true;
-  submitBtn.disabled = true;
-
-  nameInput.value = '';
-  emailInput.value = '';
-  publishInput.checked = false;
-  pointsInfo.textContent = '';
-
-  currentBadgeNo = null;
-  originalEmail = '';
-  formReady = false;
-}
-
-checkBtn.addEventListener('click', checkBadge);
-
-badgeInput.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    checkBadge();
-  }
-});
-
-resetBtn.addEventListener('click', function() {
-  badgeInput.value = '';
-  resetBtn.style.display = 'none';
-  checkBtn.style.display = 'inline-block';
-  clearMsg();
-  lockForm();
-  badgeInput.focus();
-});
-
-emailInput.addEventListener('input', validateReadyToSubmit);
-
-async function checkBadge() {
-  const badgeNo = badgeInput.value.trim();
-
-  clearMsg();
-  pointsInfo.textContent = '';
-
-  if (!badgeNo) {
-    showError('יש להזין מספר יעל');
-    return;
-  }
-
-  checkBtn.disabled = true;
-  checkBtn.textContent = 'בודק...';
-
-  try {
-    const userRes = await fetch(API_URL + '?badgeNo=' + encodeURIComponent(badgeNo));
-    const userData = await userRes.json();
-
-    if (!userData.ok || !userData.found) {
-      showError('מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.');
-      return;
-    }
-
-    const points = pointsData[badgeNo];
-
-    if (!points) {
-      showError('לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.');
-      return;
-    }
-
-    const parentCount = Number(points.parent || 0);
-    const childrenCount = Number(points.children || 0);
-
-    if (parentCount === 0 && childrenCount === 0) {
-      showError('לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.');
-      return;
-    }
-
-    currentBadgeNo = badgeNo;
-
-    nameInput.value = userData.person.nameHe || '';
-    emailInput.value = userData.person.email || '';
-    originalEmail = emailInput.value.trim();
-
-    badgeInput.disabled = true;
-    checkBtn.style.display = 'none';
-    resetBtn.style.display = 'inline-block';
-
-    emailInput.disabled = false;
-    publishInput.disabled = false;
-
-    if (!emailInput.value.trim()) {
-      emailInput.placeholder = 'חובה לרשום כתובת מייל תקינה';
-    }
-
-    pointsInfo.textContent =
-      'נמצאו ' + parentCount + ' נקודות אב ו-' + childrenCount + ' נקודות נלוות.';
-
-    showOk('הפרטים נמצאו. ניתן להשלים אימייל ולשלוח בקשה.');
-
-    validateReadyToSubmit();
-
-  } catch (err) {
-    showError('שגיאה בבדיקת מספר יעל');
-  } finally {
-    checkBtn.disabled = false;
-    checkBtn.textContent = 'בדיקה';
-  }
-}
-
-function validateReadyToSubmit() {
-  const email = emailInput.value.trim();
-
-  formReady =
-    currentBadgeNo !== null &&
-    nameInput.value.trim() !== '' &&
-    isValidEmail(email);
-
-  submitBtn.disabled = !formReady;
-}
-
-submitBtn.addEventListener('click', async function() {
-  validateReadyToSubmit();
-
-  if (!formReady) {
-    showError('יש להשלים כתובת מייל תקינה לפני שליחה');
-    return;
-  }
-
-  const email = emailInput.value.trim();
-
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'שולח...';
-
-  try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        badgeNo: currentBadgeNo,
-        nameHe: nameInput.value.trim(),
-        email: email,
-        publishAllowed: publishInput.checked,
-        updateEmail: email !== originalEmail
-      })
-    });
-
-    const data = await res.json();
-
-    if (!data.ok) {
-      showError('שליחת הבקשה נכשלה');
-      return;
-    }
-
-    showOk('הבקשה נשלחה בהצלחה');
-    resetBtn.style.display = 'none';
-    checkBtn.style.display = 'inline-block';
-    badgeInput.value = '';
-    lockForm();
-
-  } catch (err) {
-    showError('שגיאה בשליחת הבקשה');
-  } finally {
-    submitBtn.textContent = 'שליחת בקשה';
-    validateReadyToSubmit();
-  }
-});
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function showOk(text) {
-  msg.textContent = text;
-  msg.className = 'msg ok';
-}
-
-function showError(text) {
-  msg.textContent = text;
-  msg.className = 'msg error';
-}
-
-function clearMsg() {
-  msg.textContent = '';
-  msg.className = 'msg';
-}
-</script>
-
+<script src="app.js"></script>
 </body>
 </html>
