@@ -1,4 +1,4 @@
-const API_URL = 'PUT_APPS_SCRIPT_WEB_APP_URL_HERE';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxBiYALrtPamzhLo-zM8TRXqkMi0e2i41h2GvQjjpfd25cgSdAU-E1px0nPZRYBDulO/exec';
 const POINTS_JSON_URL = './badge-points-count.json';
 
 const badgeInput = document.getElementById('badgeNo');
