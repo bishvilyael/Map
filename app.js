@@ -53,11 +53,12 @@ function lockForm() {
   publishInput.checked = false;
 
   pointsInfo.textContent = '';
+  publishHint.classList.add('hidden');
+  publishHint.textContent = '';
+
   currentBadgeNo = null;
   originalEmail = '';
   formReady = false;
-
-  updatePublishHint();
 }
 
 checkBtn.addEventListener('click', checkBadge);
