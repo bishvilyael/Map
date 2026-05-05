@@ -184,29 +184,30 @@ updateEmailBtn.addEventListener("click", async function () {
   updateEmailBtn.textContent = "מעדכן...";
 
   try {
-    const url =
-      API_URL +
-      "?action=updateEmail" +
-      "&badgeNo=" +
-      encodeURIComponent(currentBadgeNo) +
-      "&email=" +
-      encodeURIComponent(email);
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "updateEmail",
+        badgeNo: currentBadgeNo,
+        email: email
+      })
+    });
 
-    const res = await fetch(url);
     const data = await res.json();
 
     if (!data.ok) {
-      showError("עדכון האימייל נכשל");
+      showError("עדכון האימייל נכשל: " + (data.error || ""));
       return;
     }
 
     originalEmail = email;
     showOk("האימייל עודכן ברשימה");
   } catch (err) {
-    showError("שגיאה בעדכון האימייל");
+    showError("שגיאה בעדכון האימייל: " + (err.message || err));
   } finally {
-    updateEmailBtn.disabled = false;
+    updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
     updateEmailBtn.textContent = "עדכון אימייל";
+    validateReadyToSubmit();
   }
 });
 
