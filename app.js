@@ -171,7 +171,6 @@ async function checkBadge() {
     checkBtn.textContent = "בדיקה";
   }
 }
-
 updateEmailBtn.addEventListener("click", async function () {
   const email = emailInput.value.trim();
 
@@ -184,15 +183,15 @@ updateEmailBtn.addEventListener("click", async function () {
   updateEmailBtn.textContent = "מעדכן...";
 
   try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "updateEmail",
-        badgeNo: currentBadgeNo,
-        email: email,
-      }),
-    });
+    const url =
+      API_URL +
+      "?action=updateEmail" +
+      "&badgeNo=" +
+      encodeURIComponent(currentBadgeNo) +
+      "&email=" +
+      encodeURIComponent(email);
 
+    const res = await fetch(url);
     const data = await res.json();
 
     if (!data.ok) {
@@ -209,7 +208,6 @@ updateEmailBtn.addEventListener("click", async function () {
     updateEmailBtn.textContent = "עדכון אימייל";
   }
 });
-
 submitBtn.addEventListener("click", async function () {
   validateReadyToSubmit();
 
