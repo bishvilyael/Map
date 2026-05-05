@@ -236,17 +236,18 @@ submitBtn.addEventListener("click", async function () {
       }),
     });
 
-    const data = await res.json();
-
-    if (!data.ok) {
-      showError("שליחת הבקשה נכשלה");
-      return;
-    }
-
-    if (data.reqId) {
-	  showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
+	if (data.reqId) {
+	  showOk(
+		"הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId + "\n" +
+		"הודעת מייל עם פרטי הבקשה נשלחה אליך.\n" +
+		"הודעה נוספת עם קישור למפה תשלח בסיום הטיפול."
+	  );
 	} else {
-	  showOk("הבקשה נשלחה בהצלחה");
+	  showOk(
+		"הבקשה נשלחה בהצלחה\n" +
+		"הודעת מייל עם פרטי הבקשה נשלחה אליך.\n" +
+		"הודעה נוספת עם קישור למפה תשלח בסיום הטיפול."
+	  );
 	}
 
     resetBtn.classList.add("hidden");
