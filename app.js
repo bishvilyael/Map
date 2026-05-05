@@ -1,5 +1,5 @@
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbyOmwCSFitXC9WnNHm52a56PhbCKKbrI3R5Dtr16-rthSIvT-3n_j3N8FSZwSSD1yqG0g/exec";
+  "PUT_YOUR_WEB_APP_URL_HERE";
 const POINTS_JSON_URL = "./badge-points-count.json";
 
 const badgeInput = document.getElementById("badgeNo");
@@ -50,7 +50,6 @@ function lockForm() {
 
   nameInput.value = "";
   emailInput.value = "";
-  emailInput.placeholder = "";
   publishInput.checked = false;
 
   pointsInfo.textContent = "";
@@ -63,29 +62,6 @@ function lockForm() {
 }
 
 checkBtn.addEventListener("click", checkBadge);
-
-badgeInput.addEventListener("keydown", function (e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    checkBadge();
-  }
-});
-
-resetBtn.addEventListener("click", function () {
-  badgeInput.value = "";
-  resetBtn.classList.add("hidden");
-  checkBtn.classList.remove("hidden");
-  clearMsg();
-  lockForm();
-  badgeInput.focus();
-});
-
-emailInput.addEventListener("input", function () {
-  validateReadyToSubmit();
-  updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
-});
-
-publishInput.addEventListener("change", updatePublishHint);
 
 async function checkBadge() {
   const badgeNo = badgeInput.value.trim();
@@ -115,7 +91,7 @@ async function checkBadge() {
     const points = pointsData[badgeNo];
 
     if (!points) {
-      showError("לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.");
+      showError("לא נמצאו נקודות עבור מספר יעל זה.");
       return;
     }
 
@@ -123,7 +99,7 @@ async function checkBadge() {
     const childrenCount = Number(points.children || 0);
 
     if (parentCount === 0 && childrenCount === 0) {
-      showError("לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.");
+      showError("לא נמצאו נקודות עבור מספר יעל זה.");
       return;
     }
 
@@ -144,10 +120,6 @@ async function checkBadge() {
     publishHint.classList.remove("hidden");
     updatePublishHint();
 
-    if (!emailInput.value.trim()) {
-      emailInput.placeholder = "חובה לרשום כתובת מייל תקינה";
-    }
-
     if (childrenCount > 0) {
       pointsInfo.textContent =
         "נמצאו " +
@@ -161,7 +133,7 @@ async function checkBadge() {
 
     updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
 
-    showOk("הפרטים נמצאו. ניתן להשלים אימייל ולשלוח בקשה.");
+    showOk("הפרטים נמצאו. ניתן לשלוח בקשה.");
 
     validateReadyToSubmit();
   } catch (err) {
@@ -171,43 +143,7 @@ async function checkBadge() {
     checkBtn.textContent = "בדיקה";
   }
 }
-updateEmailBtn.addEventListener("click", async function () {
-  const email = emailInput.value.trim();
 
-  if (!currentBadgeNo || !isValidEmail(email)) {
-    showError("יש לרשום כתובת מייל תקינה לפני עדכון");
-    return;
-  }
-
-  updateEmailBtn.disabled = true;
-  updateEmailBtn.textContent = "מעדכן...";
-
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "updateEmail",
-        badgeNo: currentBadgeNo,
-        email: email,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!data.ok) {
-      showError("עדכון האימייל נכשל");
-      return;
-    }
-
-    originalEmail = email;
-    showOk("האימייל עודכן ברשימה המקומית");
-  } catch (err) {
-    showError("שגיאה בעדכון האימייל");
-  } finally {
-    updateEmailBtn.disabled = false;
-    updateEmailBtn.textContent = "עדכון אימייל";
-  }
-});
 submitBtn.addEventListener("click", async function () {
   validateReadyToSubmit();
 
@@ -240,17 +176,14 @@ submitBtn.addEventListener("click", async function () {
       return;
     }
 
-    showOk("הבקשה נשלחה בהצלחה");
+    showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
 
-    resetBtn.classList.add("hidden");
-    checkBtn.classList.remove("hidden");
-    badgeInput.value = "";
+    submitBtn.textContent = "נשלח";
+    submitBtn.disabled = true;
+
     lockForm();
   } catch (err) {
     showError("שגיאה בשליחת הבקשה");
-  } finally {
-    submitBtn.textContent = "שליחת בקשה";
-    validateReadyToSubmit();
   }
 });
 
@@ -267,10 +200,10 @@ function validateReadyToSubmit() {
 
 function updatePublishHint() {
   if (publishInput.checked) {
-    publishHint.textContent = "המפה תוכל להופיע באתר המפות האישיות";
+    publishHint.textContent = "המפה תוכל להופיע באתר";
     publishHint.className = "publish-hint ok";
   } else {
-    publishHint.textContent = "קישור למפה ישלח רק אליך";
+    publishHint.textContent = "קישור ישלח רק אליך";
     publishHint.className = "publish-hint warn";
   }
 }
