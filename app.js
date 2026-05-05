@@ -54,7 +54,6 @@ function lockForm() {
   publishInput.checked = false;
 
   pointsInfo.textContent = "";
-
   publishHint.classList.add("hidden");
   publishHint.textContent = "";
 
@@ -141,7 +140,6 @@ async function checkBadge() {
     emailInput.disabled = false;
     publishInput.disabled = false;
 
-    // ✅ תיקון 1 – להציג מיד את ההודעה
     publishInput.checked = false;
     publishHint.classList.remove("hidden");
     updatePublishHint();
@@ -208,7 +206,7 @@ updateEmailBtn.addEventListener("click", async function () {
     showError("שגיאה בעדכון האימייל");
   } finally {
     updateEmailBtn.disabled = false;
-    updateEmailBtn.textContent = "עדכון אימייל"; // ✅ תיקון טקסט
+    updateEmailBtn.textContent = "עדכון אימייל";
   }
 });
 
