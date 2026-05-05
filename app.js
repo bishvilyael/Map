@@ -176,7 +176,11 @@ submitBtn.addEventListener("click", async function () {
       return;
     }
 
-    showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
+	if (data.reqId) {
+	  showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
+	} else {
+	  showOk("הבקשה נשלחה בהצלחה");
+	}
 
     submitBtn.textContent = "נשלח";
     submitBtn.disabled = true;
