@@ -93,7 +93,7 @@ async function checkBadge() {
   pointsInfo.textContent = '';
 
   if (!badgeNo) {
-    showError('יש להזין מספר יעל');
+    showError('יש להזין את מספר יעל');
     return;
   }
 
