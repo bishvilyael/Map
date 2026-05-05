@@ -1,237 +1,281 @@
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbyOmwCSFitXC9WnNHm52a56PhbCKKbrI3R5Dtr16-rthSIvT-3n_j3N8FSZwSSD1yqG0g/exec";
-const POINTS_JSON_URL = "./badge-points-count.json";
+const SOURCE_SPREADSHEET_ID = '1UIAJhdKlmVHK9OELsJkYna9vllaWhDp_eYTv3g4FMPQ';
+const SOURCE_SHEET_NAME = 'רשימה משולבת';
 
-const badgeInput = document.getElementById("badgeNo");
-const nameInput = document.getElementById("nameHe");
-const emailInput = document.getElementById("email");
-const publishInput = document.getElementById("publishAllowed");
+const REQUESTS_SHEET_NAME = 'בקשות מפה אישית';
+const NOTIFY_EMAIL = 'jiluz11@gmail.com';
+const SCRIPT_VERSION = '2026-05-05-STABLE-GET';
 
-const checkBtn = document.getElementById("checkBtn");
-const resetBtn = document.getElementById("resetBtn");
-const updateEmailBtn = document.getElementById("updateEmailBtn");
-const submitBtn = document.getElementById("submitBtn");
-
-const msg = document.getElementById("msg");
-const pointsInfo = document.getElementById("pointsInfo");
-const publishHint = document.getElementById("publishHint");
-
-let pointsData = {};
-let currentBadgeNo = null;
-let originalEmail = "";
-let formReady = false;
-
-init();
-
-async function init() {
-  lockForm();
-  await loadPointsJson();
-}
-
-async function loadPointsJson() {
+function doGet(e) {
   try {
-    const res = await fetch(POINTS_JSON_URL);
-    pointsData = await res.json();
-  } catch (err) {
-    showError("שגיאה בטעינת נתוני הנקודות. לא ניתן לשלוח בקשה כרגע.");
-    checkBtn.disabled = true;
-  }
-}
+    const params = e && e.parameter ? e.parameter : {};
+    const badgeNo = normalizeBadgeNo(params.badgeNo);
 
-function lockForm() {
-  badgeInput.disabled = false;
-  checkBtn.disabled = false;
-
-  nameInput.disabled = true;
-  emailInput.disabled = true;
-  publishInput.disabled = true;
-  updateEmailBtn.disabled = true;
-  submitBtn.disabled = true;
-
-  nameInput.value = "";
-  emailInput.value = "";
-  publishInput.checked = false;
-
-  pointsInfo.textContent = "";
-  publishHint.classList.add("hidden");
-  publishHint.textContent = "";
-
-  currentBadgeNo = null;
-  originalEmail = "";
-  formReady = false;
-}
-
-checkBtn.addEventListener("click", checkBadge);
-
-async function checkBadge() {
-  const badgeNo = badgeInput.value.trim();
-
-  clearMsg();
-  pointsInfo.textContent = "";
-
-  if (!badgeNo) {
-    showError("יש להזין מספר יעל");
-    return;
-  }
-
-  checkBtn.disabled = true;
-  checkBtn.textContent = "בודק...";
-
-  try {
-    const userRes = await fetch(
-      API_URL + "?badgeNo=" + encodeURIComponent(badgeNo),
-    );
-    const userData = await userRes.json();
-
-    if (!userData.ok || !userData.found) {
-      showError("מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.");
-      return;
+    if (!badgeNo) {
+      return jsonOutput({
+        ok: false,
+        version: SCRIPT_VERSION,
+        error: 'Missing badgeNo'
+      });
     }
 
-    const points = pointsData[badgeNo];
+    const person = findPersonByBadgeNo(badgeNo);
 
-    if (!points) {
-      showError("לא נמצאו נקודות עבור מספר יעל זה.");
-      return;
-    }
-
-    const parentCount = Number(points.parent || 0);
-    const childrenCount = Number(points.children || 0);
-
-    if (parentCount === 0 && childrenCount === 0) {
-      showError("לא נמצאו נקודות עבור מספר יעל זה.");
-      return;
-    }
-
-    currentBadgeNo = badgeNo;
-
-    nameInput.value = userData.person.nameHe || "";
-    emailInput.value = userData.person.email || "";
-    originalEmail = emailInput.value.trim();
-
-    badgeInput.disabled = true;
-    checkBtn.classList.add("hidden");
-    resetBtn.classList.remove("hidden");
-
-    emailInput.disabled = false;
-    publishInput.disabled = false;
-
-    publishInput.checked = false;
-    publishHint.classList.remove("hidden");
-    updatePublishHint();
-
-    if (childrenCount > 0) {
-      pointsInfo.textContent =
-        "נמצאו " +
-        parentCount +
-        " נקודות שלך במפה ועוד " +
-        childrenCount +
-        " נלווים.";
-    } else {
-      pointsInfo.textContent = "נמצאו " + parentCount + " נקודות שלך במפה.";
-    }
-
-    updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
-
-    showOk("הפרטים נמצאו. ניתן לשלוח בקשה.");
-
-    validateReadyToSubmit();
-  } catch (err) {
-    showError("שגיאה בבדיקת מספר יעל");
-  } finally {
-    checkBtn.disabled = false;
-    checkBtn.textContent = "בדיקה";
-  }
-}
-
-submitBtn.addEventListener("click", async function () {
-  validateReadyToSubmit();
-
-  if (!formReady) {
-    showError("יש להשלים כתובת מייל תקינה לפני שליחה");
-    return;
-  }
-
-  const email = emailInput.value.trim();
-
-  submitBtn.disabled = true;
-  submitBtn.textContent = "שולח...";
-
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "submitRequest",
-        badgeNo: currentBadgeNo,
-        nameHe: nameInput.value.trim(),
-        email: email,
-        publishAllowed: publishInput.checked,
-      }),
+    return jsonOutput({
+      ok: true,
+      version: SCRIPT_VERSION,
+      badgeNo: badgeNo,
+      found: !!person,
+      person: person
     });
 
-    const data = await res.json();
-    console.log("submit response:", data);
-
-    if (!data.ok) {
-      showError("שליחת הבקשה נכשלה");
-      return;
-    }
-
-    if (data.reqId) {
-      showOk("הבקשה נשלחה בהצלחה. מספר הבקשה: " + data.reqId);
-    } else {
-      showOk("הבקשה נשלחה בהצלחה");
-    }
-
-    submitBtn.textContent = "נשלח";
-    submitBtn.disabled = true;
-
-    lockForm();
   } catch (err) {
-    console.error("submitRequest failed:", err);
-    showError("שגיאה בשליחת הבקשה: " + (err.message || err));
-  } finally {
-    submitBtn.textContent = "שליחת בקשה";
-    validateReadyToSubmit();
-  }
-});
-
-function validateReadyToSubmit() {
-  const email = emailInput.value.trim();
-
-  formReady =
-    currentBadgeNo !== null &&
-    nameInput.value.trim() !== "" &&
-    isValidEmail(email);
-
-  submitBtn.disabled = !formReady;
-}
-
-function updatePublishHint() {
-  if (publishInput.checked) {
-    publishHint.textContent = "המפה תוכל להופיע באתר";
-    publishHint.className = "publish-hint ok";
-  } else {
-    publishHint.textContent = "קישור ישלח רק אליך";
-    publishHint.className = "publish-hint warn";
+    return jsonOutput({
+      ok: false,
+      version: SCRIPT_VERSION,
+      error: String(err)
+    });
   }
 }
 
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents || '{}');
+    const action = String(data.action || 'submitRequest').trim();
+
+    if (action === 'updateEmail') {
+      return handleUpdateEmail(data);
+    }
+
+    if (action === 'submitRequest') {
+      return submitMapRequest(data);
+    }
+
+    return jsonOutput({
+      ok: false,
+      version: SCRIPT_VERSION,
+      error: 'Unknown action: ' + action
+    });
+
+  } catch (err) {
+    return jsonOutput({
+      ok: false,
+      version: SCRIPT_VERSION,
+      error: String(err)
+    });
+  }
 }
 
-function showOk(text) {
-  msg.textContent = text;
-  msg.className = "msg ok";
+function handleUpdateEmail(data) {
+  const badgeNo = normalizeBadgeNo(data.badgeNo);
+  const email = normalizeText(data.email);
+
+  if (!badgeNo || !email) {
+    return jsonOutput({
+      ok: false,
+      version: SCRIPT_VERSION,
+      error: 'Missing badgeNo or email'
+    });
+  }
+
+  const result = updatePersonEmail(badgeNo, email);
+
+  return jsonOutput({
+    ok: result.updated,
+    version: SCRIPT_VERSION,
+    updated: result.updated,
+    badgeNo: badgeNo,
+    row: result.row,
+    oldEmail: result.oldEmail,
+    newEmail: result.newEmail,
+    error: result.updated ? '' : 'BadgeNo not found'
+  });
 }
 
-function showError(text) {
-  msg.textContent = text;
-  msg.className = "msg error";
+function findPersonByBadgeNo(badgeNo) {
+  const ss = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SOURCE_SHEET_NAME);
+
+  if (!sheet) {
+    throw new Error('Sheet not found: ' + SOURCE_SHEET_NAME);
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    const nameHe = normalizeText(values[i][0]);       // A
+    const rowBadgeNo = normalizeBadgeNo(values[i][1]); // B
+    const email = normalizeText(values[i][4]);        // E
+
+    if (rowBadgeNo === badgeNo) {
+      return {
+        nameHe: nameHe,
+        email: email,
+        row: i + 1
+      };
+    }
+  }
+
+  return null;
 }
 
-function clearMsg() {
-  msg.textContent = "";
-  msg.className = "msg";
+function updatePersonEmail(badgeNo, email) {
+  const ss = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SOURCE_SHEET_NAME);
+
+  if (!sheet) {
+    throw new Error('Sheet not found: ' + SOURCE_SHEET_NAME);
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    const rowBadgeNo = normalizeBadgeNo(values[i][1]); // B
+
+    if (rowBadgeNo === badgeNo) {
+      const rowNumber = i + 1;
+      const oldEmail = normalizeText(values[i][4]); // E
+
+      sheet.getRange(rowNumber, 5).setValue(email); // E
+      SpreadsheetApp.flush();
+
+      return {
+        updated: true,
+        row: rowNumber,
+        oldEmail: oldEmail,
+        newEmail: email
+      };
+    }
+  }
+
+  return {
+    updated: false,
+    row: null,
+    oldEmail: '',
+    newEmail: email
+  };
+}
+
+function submitMapRequest(data) {
+  const badgeNo = normalizeBadgeNo(data.badgeNo);
+  const nameHe = normalizeText(data.nameHe);
+  const email = normalizeText(data.email);
+  const publishAllowed = !!data.publishAllowed;
+
+  if (!badgeNo || !nameHe || !email) {
+    return jsonOutput({
+      ok: false,
+      version: SCRIPT_VERSION,
+      error: 'Missing required fields'
+    });
+  }
+
+  const ss = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(REQUESTS_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(REQUESTS_SHEET_NAME);
+    sheet.appendRow([
+      'Timestamp',
+      'BadgeNo',
+      'שם בעברית',
+      'Email',
+      'PublishAllowed',
+      'Status',
+      'MapUrl',
+      'Notes',
+      'ScriptVersion',
+      'NotifySent',
+      'NotifyError'
+    ]);
+  }
+
+  sheet.appendRow([
+    new Date(),
+    badgeNo,
+    nameHe,
+    email,
+    publishAllowed ? 'כן' : 'לא',
+    'New',
+    '',
+    '',
+    SCRIPT_VERSION,
+    '',
+    ''
+  ]);
+
+  const savedRow = sheet.getLastRow();
+  SpreadsheetApp.flush();
+
+  const notifyResult = sendAdminNotificationOnly(
+    badgeNo,
+    nameHe,
+    email,
+    publishAllowed
+  );
+
+  sheet.getRange(savedRow, 10).setValue(notifyResult.sent ? 'כן' : 'לא');
+  sheet.getRange(savedRow, 11).setValue(notifyResult.error || '');
+  SpreadsheetApp.flush();
+
+  return jsonOutput({
+    ok: true,
+    version: SCRIPT_VERSION,
+    saved: true,
+    row: savedRow,
+    notifySent: notifyResult.sent,
+    notifyError: notifyResult.error || ''
+  });
+}
+
+function sendAdminNotificationOnly(badgeNo, nameHe, email, publishAllowed) {
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAIL,
+      subject: 'בקשה חדשה למפה אישית - יעל #' + badgeNo,
+      body:
+        'התקבלה בקשה חדשה למפה אישית.\n\n' +
+        'מספר יעל: ' + badgeNo + '\n' +
+        'שם: ' + nameHe + '\n' +
+        'אימייל: ' + email + '\n' +
+        'אישור הפצה באתר: ' + (publishAllowed ? 'כן' : 'לא') + '\n\n' +
+        'גרסת סקריפט: ' + SCRIPT_VERSION
+    });
+
+    return {
+      sent: true,
+      error: ''
+    };
+
+  } catch (err) {
+    return {
+      sent: false,
+      error: String(err)
+    };
+  }
+}
+
+function normalizeBadgeNo(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  let s = String(value).trim();
+  s = s.replace(/\.0$/, '');
+  s = s.replace(/\s+/g, '');
+
+  return s;
+}
+
+function normalizeText(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).trim();
+}
+
+function jsonOutput(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
