@@ -107,33 +107,15 @@ async function checkBadge() {
     );
     const userData = await userRes.json();
 
-    if (!userData.ok || !userData.found) {
+    if (!userData.ok || !userData.found || !userData.person) {
       showError("מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.");
       return;
     }
+
+    // קודם תמיד מציגים את פרטי היעל
     nameInput.value = userData.person.nameHe || "";
     emailInput.value = userData.person.email || "";
     originalEmail = emailInput.value.trim();
-	
-    const parentCount = Number(points.parent || 0);
-    const childrenCount = Number(points.children || 0);
-
-    if (parentCount === 0 && childrenCount === 0) {
-      showError("לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.");
-      return;
-    }
-
-    currentBadgeNo = badgeNo;
-
-
-	
-	const points = pointsData[badgeNo];
-	
-	if (!points) {
-      showError("לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.");
-	  submitBtn.disabled = true;
-      return;
-    }
 
     badgeInput.disabled = true;
     checkBtn.classList.add("hidden");
@@ -149,6 +131,23 @@ async function checkBadge() {
     if (!emailInput.value.trim()) {
       emailInput.placeholder = "חובה לרשום כתובת מייל תקינה";
     }
+
+    const points = pointsData[badgeNo];
+    const parentCount = points ? Number(points.parent || 0) : 0;
+    const childrenCount = points ? Number(points.children || 0) : 0;
+
+    // אם אין נקודות — הפרטים נשארים מוצגים, אבל לא מאפשרים שליחה
+    if (parentCount === 0 && childrenCount === 0) {
+      currentBadgeNo = null;
+      pointsInfo.textContent = "לא נמצאו נקודות עבור מספר יעל זה.";
+      updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
+      submitBtn.disabled = true;
+      showError("פרטי היעל נמצאו, אך לא נמצאו נקודות. לא ניתן לשלוח בקשה.");
+      return;
+    }
+
+    // רק אם יש נקודות — מאפשרים המשך רגיל
+    currentBadgeNo = badgeNo;
 
     if (childrenCount > 0) {
       pointsInfo.textContent =
@@ -173,7 +172,6 @@ async function checkBadge() {
     checkBtn.textContent = "בדיקה";
   }
 }
-
 updateEmailBtn.addEventListener("click", async function () {
   const email = emailInput.value.trim();
 
