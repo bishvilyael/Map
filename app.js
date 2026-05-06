@@ -107,6 +107,93 @@ async function checkBadge() {
     );
     const userData = await userRes.json();
 
+    if (!userData.ok || !userData.found || !userData.person) {
+      showError("מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.");
+      return;
+    }
+
+    currentBadgeNo = badgeNo;
+
+    nameInput.value = userData.person.nameHe || "";
+    emailInput.value = userData.person.email || "";
+    originalEmail = emailInput.value.trim();
+
+    badgeInput.disabled = true;
+    checkBtn.classList.add("hidden");
+    resetBtn.classList.remove("hidden");
+
+    emailInput.disabled = false;
+    publishInput.disabled = false;
+
+    publishInput.checked = false;
+    publishHint.classList.remove("hidden");
+    updatePublishHint();
+
+    if (!emailInput.value.trim()) {
+      emailInput.placeholder = "חובה לרשום כתובת מייל תקינה";
+    }
+
+    const points = pointsData[badgeNo];
+
+    if (!points) {
+      pointsInfo.textContent = "לא נמצאו נקודות עבור מספר יעל זה.";
+      showError("פרטי היעל נמצאו, אך לא נמצאו נקודות. לא ניתן לשלוח בקשה.");
+      validateReadyToSubmit();
+      return;
+    }
+
+    const parentCount = Number(points.parent || 0);
+    const childrenCount = Number(points.children || 0);
+
+    if (parentCount === 0 && childrenCount === 0) {
+      pointsInfo.textContent = "לא נמצאו נקודות עבור מספר יעל זה.";
+      showError("פרטי היעל נמצאו, אך לא נמצאו נקודות. לא ניתן לשלוח בקשה.");
+      validateReadyToSubmit();
+      return;
+    }
+
+    if (childrenCount > 0) {
+      pointsInfo.textContent =
+        "נמצאו " +
+        parentCount +
+        " נקודות שלך במפה ועוד " +
+        childrenCount +
+        " נלווים.";
+    } else {
+      pointsInfo.textContent = "נמצאו " + parentCount + " נקודות שלך במפה.";
+    }
+
+    updateEmailBtn.disabled = !isValidEmail(emailInput.value.trim());
+
+    showOk("הפרטים נמצאו. ניתן להשלים אימייל ולשלוח בקשה.");
+
+    validateReadyToSubmit();
+  } catch (err) {
+    showError("שגיאה בבדיקת מספר יעל");
+  } finally {
+    checkBtn.disabled = false;
+    checkBtn.textContent = "בדיקה";
+  }
+}
+  const badgeNo = badgeInput.value.trim();
+
+  clearMsg();
+  pointsInfo.textContent = "";
+
+  if (!badgeNo) {
+    showError("יש להזין מספר יעל");
+    return;
+  }
+
+  checkBtn.disabled = true;
+  checkBtn.textContent = "בודק...";
+
+  try {
+    const userRes = await fetch(
+      API_URL + "?badgeNo=" + encodeURIComponent(badgeNo),
+    );
+    const userData = await userRes.json();
+
     if (!userData.ok || !userData.found) {
       showError("מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.");
       return;
