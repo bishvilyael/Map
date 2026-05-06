@@ -112,6 +112,13 @@ async function checkBadge() {
       return;
     }
 
+    const points = pointsData[badgeNo];
+
+    if (!points) {
+      showError("לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.");
+      return;
+    }
+
     const parentCount = Number(points.parent || 0);
     const childrenCount = Number(points.children || 0);
 
@@ -125,14 +132,6 @@ async function checkBadge() {
     nameInput.value = userData.person.nameHe || "";
     emailInput.value = userData.person.email || "";
     originalEmail = emailInput.value.trim();
-	
-	const points = pointsData[badgeNo];
-	
-	if (!points) {
-      showError("לא נמצאו נקודות עבור מספר יעל זה. לא ניתן להמשיך.");
-	  submitBtn.disabled = true;
-      return;
-    }
 
     badgeInput.disabled = true;
     checkBtn.classList.add("hidden");
