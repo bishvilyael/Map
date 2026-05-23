@@ -416,7 +416,6 @@ submitBtn.addEventListener("click", async function () {
         email: email,
         publishAllowed: publishInput.checked,
         publishTouched: isPublishChanged(),
-        publishRequiresProcessing: shouldPublishChangeMoveToUpdate(),
         selectedReqId: selectedReqId,
         pointCount: currentPointCount,
         childCount: currentChildCount,

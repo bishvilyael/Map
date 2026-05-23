@@ -22,53 +22,12 @@ function isDeleteAction(value) {
   return normalizeAction(value) === "מחיקה";
 }
 
-function getRequestStatus(request) {
-  return normalizeStatus(request && (request.status || request.Status));
-}
-
-function getRequestAction(request) {
-  return normalizeAction(request && (request.action || request.Action));
-}
-
 function isDeletedRequest(request) {
-  return request && isDeletedStatus(getRequestStatus(request));
+  return request && isDeletedStatus(request.status);
 }
 
 function isDeletingRequest(request) {
-  return request && (isDeleteAction(getRequestAction(request)) || isDeletedStatus(getRequestStatus(request)));
-}
-
-function isUntreatedNewRequest(request) {
-  return (
-    request &&
-    getRequestAction(request) === "יצירה" &&
-    getRequestStatus(request) === "חדש"
-  );
-}
-
-function isRequestInTreatmentOrCompleted(request) {
-  const status = getRequestStatus(request);
-  return status === "בטיפול" || status === "הושלם";
-}
-
-function shouldPublishChangeMoveToUpdate() {
-  if (!isPublishChanged()) {
-    return false;
-  }
-
-  const selectedRequest = getSelectedStatusRequest();
-
-  if (!selectedRequest || isDeletingRequest(selectedRequest)) {
-    return false;
-  }
-
-  // בקשה חדשה שטרם טופלה נשארת פעולה=יצירה, סטטוס=חדש.
-  if (isUntreatedNewRequest(selectedRequest)) {
-    return false;
-  }
-
-  // רק בקשה בטיפול או בקשה שהושלמה הופכת לעדכון/בטיפול בעקבות שינוי תפוצה.
-  return isRequestInTreatmentOrCompleted(selectedRequest);
+  return request && (isDeleteAction(request.action || request.Action) || isDeletedStatus(request.status));
 }
 
 function getActiveStatusList() {
