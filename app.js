@@ -461,9 +461,9 @@ function validateReadyToSubmit() {
   submitBtn.disabled = !formReady;
   validateDeleteButtons();
 
-  if (actionNeeded && !requestBusy) {
-    lockStatusTableForPendingUpdate();
-  } else if (!requestBusy) {
+  // אין לנעול את טבלת הבקשות רק בגלל שינוי ממתין.
+  // הטבלה ננעלת רק בזמן פעולה ממשית מול השרת: שמירה / עדכון / מחיקה.
+  if (!requestBusy) {
     unlockStatusTableForPendingUpdate();
   }
 

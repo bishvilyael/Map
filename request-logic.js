@@ -14,8 +14,20 @@ function isDeletedStatus(value) {
   return normalizeStatus(value) === "נמחק";
 }
 
+function normalizeAction(value) {
+  return String(value || "").trim();
+}
+
+function isDeleteAction(value) {
+  return normalizeAction(value) === "מחיקה";
+}
+
 function isDeletedRequest(request) {
   return request && isDeletedStatus(request.status);
+}
+
+function isDeletingRequest(request) {
+  return request && (isDeleteAction(request.action || request.Action) || isDeletedStatus(request.status));
 }
 
 function getActiveStatusList() {
@@ -24,7 +36,7 @@ function getActiveStatusList() {
   }
 
   return currentStatusList.filter(function (r) {
-    return !isDeletedRequest(r);
+    return !isDeletingRequest(r);
   });
 }
 
@@ -68,7 +80,7 @@ function isPublishChanged() {
 function isCountsChangedFromSelectedRequest() {
   const selectedRequest = getSelectedStatusRequest();
 
-  if (!selectedRequest || isDeletedRequest(selectedRequest)) {
+  if (!selectedRequest || isDeletingRequest(selectedRequest)) {
     return false;
   }
 
@@ -93,7 +105,7 @@ function hasSubmitActionNeeded() {
 
   const selectedRequest = getSelectedStatusRequest();
 
-  if (!selectedRequest || isDeletedRequest(selectedRequest)) {
+  if (!selectedRequest || isDeletingRequest(selectedRequest)) {
     return false;
   }
 
@@ -106,7 +118,7 @@ function canDeleteSelectedRequest() {
   return (
     currentBadgeNo !== null &&
     selectedRequest !== null &&
-    !isDeletedRequest(selectedRequest) &&
+    !isDeletingRequest(selectedRequest) &&
     !requestBusy
   );
 }

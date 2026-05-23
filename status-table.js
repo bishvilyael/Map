@@ -24,7 +24,7 @@ function buildStatusTableHtml(list) {
   html += "<tbody>";
 
   list.forEach(function (r) {
-    const deletedClass = isDeletedRequest(r) ? " deleted-status-row" : "";
+    const deletedClass = isDeletingRequest(r) ? " deleted-status-row" : "";
     const selectedClass =
       String(r.reqId) === String(selectedReqId) ? " selected-status-row" : "";
 
@@ -46,7 +46,7 @@ function buildStatusTableHtml(list) {
     html += "<td>" + escapeHtml(r.reqUpdate || "") + "</td>";
     html += "<td>" + escapeHtml(r.reqComp || "") + "</td>";
 
-    if (r.mapUrl && !isDeletedRequest(r)) {
+    if (r.mapUrl && !isDeletingRequest(r)) {
       html +=
         '<td><a href="' +
         escapeAttr(r.mapUrl) +
@@ -86,14 +86,6 @@ function selectStatusRequest(reqId) {
       return String(r.reqId) === String(reqId);
     }) || null;
 
-  if (isDeletedRequest(requestToSelect)) {
-    showError("בקשה שנמחקה מוצגת לצפייה בלבד ואינה ניתנת לבחירה.");
-    statusTableWrap.innerHTML = buildStatusTableHtml(currentStatusList);
-    validateReadyToSubmit();
-    validateDeleteButtons();
-    return;
-  }
-
   selectedReqId = reqId;
   updateSelectedReqTitle();
 
@@ -123,7 +115,7 @@ function renderStatusSection(preferredReqId) {
     const preferredRequest =
       preferredReqId
         ? currentStatusList.find(function (r) {
-            return String(r.reqId) === String(preferredReqId) && !isDeletedRequest(r);
+            return String(r.reqId) === String(preferredReqId);
           })
         : null;
 
