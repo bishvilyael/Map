@@ -156,7 +156,7 @@ button:disabled {
 }
 .submit-line {
   display: grid;
-  grid-template-columns: 1fr auto  auto;
+  grid-template-columns: 1fr auto auto auto auto;
   gap: 8px;
   margin-top: 18px;
 }
@@ -215,4 +215,29 @@ button:disabled {
   direction: ltr;
   text-align: right;
   unicode-bidi: plaintext;
+}
+
+.danger-btn {
+  background: #b00020;
+  color: #fff;
+  border: 1px solid #7a0016;
+}
+
+.danger-btn:disabled {
+  background: #b00020;
+  color: #fff;
+}
+
+.deleted-status-row {
+  color: #777;
+  background: #eeeeee;
+  text-decoration: line-through;
+}
+
+.deleted-status-row:hover {
+  background: #eeeeee;
+}
+
+.deleted-status-row a {
+  pointer-events: none;
 }

@@ -6,55 +6,59 @@ function buildStatusTableHtml(list) {
   let html = "";
 
   html += '<table class="status-table">';
-	html += "<thead>";
-		html += "<tr>";
-		html += "<th>בקשה</th>";
-		html += "<th>סטטוס</th>";
-		html += "<th>הפצה</th>";
-		html += "<th>נקודות</th>";
-		html += "<th>נלווים</th>";
-		html += "<th>תאריך בקשה</th>";
-		html += "<th>תאריך עדכון</th>";
-		html += "<th>תאריך סיום</th>";
-		html += "<th>קישור</th>";
-		html += "</tr>";
-		html += "</thead>";
+  html += "<thead>";
+  html += "<tr>";
+  html += "<th>בקשה</th>";
+  html += "<th>פעולה</th>";
+  html += "<th>סטטוס</th>";
+  html += "<th>הפצה</th>";
+  html += "<th>נקודות</th>";
+  html += "<th>נלווים</th>";
+  html += "<th>תאריך בקשה</th>";
+  html += "<th>תאריך עדכון</th>";
+  html += "<th>תאריך סיום</th>";
+  html += "<th>קישור</th>";
+  html += "</tr>";
+  html += "</thead>";
 
-		html += "<tbody>";
+  html += "<tbody>";
 
-		list.forEach(function (r) {
-		  const selectedClass =
-			String(r.reqId) === String(selectedReqId) ? " selected-status-row" : "";
+  list.forEach(function (r) {
+    const deletedClass = isDeletedRequest(r) ? " deleted-status-row" : "";
+    const selectedClass =
+      String(r.reqId) === String(selectedReqId) ? " selected-status-row" : "";
 
-		  html +=
-			'<tr class="status-row' +
-			selectedClass +
-			'" onclick="selectStatusRequest(\'' +
-			escapeAttr(r.reqId || "") +
-			'\')">';
+    html +=
+      '<tr class="status-row' +
+      deletedClass +
+      selectedClass +
+      '" onclick="selectStatusRequest(\'' +
+      escapeAttr(r.reqId || "") +
+      '\')">';
 
-		  html += "<td>" + escapeHtml(r.reqId || "") + "</td>";
-		  html += "<td>" + escapeHtml(r.status || "") + "</td>";
-		  html += "<td>" + escapeHtml(r.publishAllowed || "") + "</td>";
-		  html += "<td>" + escapeHtml(r.pointCount || "") + "</td>";
-		  html += "<td>" + escapeHtml(r.childCount || "") + "</td>";
-		  html += "<td>" + escapeHtml(r.reqDate || "") + "</td>";
-		  html += "<td>" + escapeHtml(r.reqUpdate || "") + "</td>";
-		  html += "<td>" + escapeHtml(r.reqComp || "") + "</td>";
+    html += "<td>" + escapeHtml(r.reqId || "") + "</td>";
+    html += "<td>" + escapeHtml(r.action || r.Action || "") + "</td>";
+    html += "<td>" + escapeHtml(r.status || "") + "</td>";
+    html += "<td>" + escapeHtml(r.publishAllowed || "") + "</td>";
+    html += "<td>" + escapeHtml(r.pointCount || "") + "</td>";
+    html += "<td>" + escapeHtml(r.childCount || "") + "</td>";
+    html += "<td>" + escapeHtml(r.reqDate || "") + "</td>";
+    html += "<td>" + escapeHtml(r.reqUpdate || "") + "</td>";
+    html += "<td>" + escapeHtml(r.reqComp || "") + "</td>";
 
-		  if (r.mapUrl) {
-			html +=
-			  '<td><a href="' +
-			  escapeAttr(r.mapUrl) +
-			  '" target="_blank" rel="noopener">פתח מפה</a></td>';
-		  } else {
-			html += "<td></td>";
-		  }
+    if (r.mapUrl && !isDeletedRequest(r)) {
+      html +=
+        '<td><a href="' +
+        escapeAttr(r.mapUrl) +
+        '" target="_blank" rel="noopener">פתח מפה</a></td>';
+    } else {
+      html += "<td></td>";
+    }
 
-		  html += "</tr>";
-		});
+    html += "</tr>";
+  });
 
-		html += "</tbody>";
+  html += "</tbody>";
   html += "</table>";
 
   return html;
@@ -77,6 +81,19 @@ function selectStatusRequest(reqId) {
     return;
   }
 
+  const requestToSelect =
+    currentStatusList.find(function (r) {
+      return String(r.reqId) === String(reqId);
+    }) || null;
+
+  if (isDeletedRequest(requestToSelect)) {
+    showError("בקשה שנמחקה מוצגת לצפייה בלבד ואינה ניתנת לבחירה.");
+    statusTableWrap.innerHTML = buildStatusTableHtml(currentStatusList);
+    validateReadyToSubmit();
+    validateDeleteButtons();
+    return;
+  }
+
   selectedReqId = reqId;
   updateSelectedReqTitle();
 
@@ -90,6 +107,7 @@ function selectStatusRequest(reqId) {
 
   statusTableWrap.innerHTML = buildStatusTableHtml(currentStatusList);
   validateReadyToSubmit();
+  validateDeleteButtons();
 }
 
 function updateSelectedReqTitle() {
@@ -99,6 +117,52 @@ function updateSelectedReqTitle() {
     selectedReqTitle.textContent = "";
   }
 }
+
+function renderStatusSection(preferredReqId) {
+  if (currentStatusList.length > 0) {
+    const preferredRequest =
+      preferredReqId
+        ? currentStatusList.find(function (r) {
+            return String(r.reqId) === String(preferredReqId) && !isDeletedRequest(r);
+          })
+        : null;
+
+    selectedReqId =
+      (preferredRequest && preferredRequest.reqId) ||
+      getDefaultSelectableReqId();
+
+    statusSection.classList.remove("hidden");
+    toggleStatusBtn.classList.remove("hidden");
+    toggleStatusBtn.textContent = "הסתר סטטוס בקשות";
+
+    statusTableWrap.classList.remove("hidden");
+    statusTableWrap.innerHTML = buildStatusTableHtml(currentStatusList);
+
+    updateSelectedReqTitle();
+
+    const selectedRequest = getSelectedStatusRequest();
+
+    if (selectedRequest) {
+      publishInput.checked = selectedRequest.publishAllowed === "כן";
+    } else {
+      publishInput.checked = false;
+    }
+
+    setSelectedPublishBaseline();
+    updatePublishHint();
+    validateDeleteButtons();
+  } else {
+    selectedReqId = null;
+    updateSelectedReqTitle();
+
+    statusSection.classList.add("hidden");
+    toggleStatusBtn.classList.add("hidden");
+    statusTableWrap.classList.add("hidden");
+    statusTableWrap.innerHTML = "";
+    validateDeleteButtons();
+  }
+}
+
 async function refreshCurrentBadgeStatus(preferredReqId) {
   if (!currentBadgeNo) {
     return;
@@ -114,28 +178,5 @@ async function refreshCurrentBadgeStatus(preferredReqId) {
     ? userData.requestStatusList
     : [];
 
-  if (currentStatusList.length > 0) {
-
-    selectedReqId =
-      preferredReqId ||
-      selectedReqId ||
-      currentStatusList[0].reqId;
-
-    statusSection.classList.remove("hidden");
-    toggleStatusBtn.classList.remove("hidden");
-    toggleStatusBtn.textContent = "הסתר סטטוס בקשות";
-
-    statusTableWrap.classList.remove("hidden");
-    statusTableWrap.innerHTML = buildStatusTableHtml(currentStatusList);
-
-    updateSelectedReqTitle();
-
-    const selectedRequest = getSelectedStatusRequest();
-
-    if (selectedRequest) {
-      publishInput.checked = selectedRequest.publishAllowed === "כן";
-      setSelectedPublishBaseline();
-      updatePublishHint();
-    }
-  }
+  renderStatusSection(preferredReqId);
 }

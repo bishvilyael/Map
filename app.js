@@ -1,7 +1,5 @@
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbyOmwCSFitXC9WnNHm52a56PhbCKKbrI3R5Dtr16-rthSIvT-3n_j3N8FSZwSSD1yqG0g/exec";
-   
-  
+  "https://script.google.com/macros/s/AKfycbyEK1-fFb26g3TJbVHwao3yoY7mUOFCaeBA9TcqRkts0A94CLEXlBH-_uehP-LJK3mvYA/exec";
 const POINTS_JSON_URL = "./badge-points-count.json";
 
 const badgeInput = document.getElementById("badgeNo");
@@ -13,6 +11,8 @@ const checkBtn = document.getElementById("checkBtn");
 const resetBtn = document.getElementById("resetBtn");
 const updateEmailBtn = document.getElementById("updateEmailBtn");
 const submitBtn = document.getElementById("submitBtn");
+const deleteRequestBtn = document.getElementById("deleteRequestBtn");
+const deleteAllRequestsBtn = document.getElementById("deleteAllRequestsBtn");
 
 const msg = document.getElementById("msg");
 const pointsInfo = document.getElementById("pointsInfo");
@@ -64,6 +64,8 @@ function lockForm() {
   publishInput.disabled = true;
   updateEmailBtn.disabled = true;
   submitBtn.disabled = true;
+  deleteRequestBtn.disabled = true;
+  deleteAllRequestsBtn.disabled = true;
 
   nameInput.value = "";
   emailInput.value = "";
@@ -89,6 +91,8 @@ function lockForm() {
   selectedReqId = null;
   selectedReqTitle.textContent = "";
   closeFormBtn.classList.add("hidden");
+  deleteRequestBtn.classList.add("hidden");
+  deleteAllRequestsBtn.classList.add("hidden");
 }
 
 checkBtn.addEventListener("click", checkBadge);
@@ -138,6 +142,92 @@ closeFormBtn.addEventListener("click", function () {
     formBox.innerHTML = "<h1>הטופס נסגר</h1><div class='msg ok'>אפשר לסגור את הלשונית בדפדפן.</div>";
   }
 });
+
+deleteRequestBtn.addEventListener("click", async function () {
+  const selectedRequest = getSelectedStatusRequest();
+
+  if (!canDeleteSelectedRequest()) {
+    showError("אין בקשה פעילה שניתן למחוק.");
+    return;
+  }
+
+  const approved = confirm(
+    "האם למחוק את בקשה מס' " + selectedRequest.reqId + "?\nהבקשה תסומן למחיקה ותטופל בצד השרת."
+  );
+
+  if (!approved) {
+    return;
+  }
+
+  await sendDeleteRequest("deleteRequest", {
+    selectedReqId: selectedRequest.reqId,
+  });
+});
+
+deleteAllRequestsBtn.addEventListener("click", async function () {
+  if (!canDeleteAnyRequest()) {
+    showError("אין בקשות פעילות שניתן למחוק.");
+    return;
+  }
+
+  const approved = confirm(
+    "האם למחוק את כל הבקשות הפעילות של מספר יעל זה?\nבקשות שכבר נמחקו יישארו מוצגות ולא יטופלו שוב."
+  );
+
+  if (!approved) {
+    return;
+  }
+
+  await sendDeleteRequest("deleteAllRequests", {});
+});
+
+async function sendDeleteRequest(serverAction, extraPayload) {
+  let finalMessage = "";
+  let finalError = "";
+
+  clearMsg();
+  lockStatusTable();
+  validateDeleteButtons();
+
+  deleteRequestBtn.classList.add("busy-blink");
+  deleteAllRequestsBtn.classList.add("busy-blink");
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(Object.assign({
+        action: serverAction,
+        badgeNo: currentBadgeNo,
+      }, extraPayload || {})),
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      finalError = "פעולת המחיקה נכשלה: " + (data.error || data.notifyError || "");
+      return;
+    }
+
+    await refreshCurrentBadgeStatus(data.reqId);
+    finalMessage = data.message || "הבקשה סומנה למחיקה";
+
+  } catch (err) {
+    finalError = "שגיאה בביצוע המחיקה: " + (err.message || err);
+  } finally {
+    deleteRequestBtn.classList.remove("busy-blink");
+    deleteAllRequestsBtn.classList.remove("busy-blink");
+    unlockStatusTable();
+    validateReadyToSubmit();
+    validateDeleteButtons();
+
+    if (finalError) {
+      showError(finalError);
+    } else if (finalMessage) {
+      showOk(finalMessage);
+    }
+  }
+}
+
 async function checkBadge() {
   const badgeNo = badgeInput.value.trim();
 
@@ -163,29 +253,11 @@ async function checkBadge() {
       showError("מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.");
       return;
     }
-	currentStatusList = Array.isArray(userData.requestStatusList)
-	  ? userData.requestStatusList
-	  : [];
+    currentStatusList = Array.isArray(userData.requestStatusList)
+      ? userData.requestStatusList
+      : [];
 
-	if (currentStatusList.length > 0) {
-	  selectedReqId = currentStatusList[0].reqId;
-	  updateSelectedReqTitle();
-
-	  statusSection.classList.remove("hidden");
-	  toggleStatusBtn.classList.remove("hidden");
-	  toggleStatusBtn.textContent = "הסתר סטטוס בקשות";
-
-	  statusTableWrap.classList.remove("hidden");
-	  statusTableWrap.innerHTML = buildStatusTableHtml(currentStatusList);
-	} else {
-	  selectedReqId = null;
-	  updateSelectedReqTitle();
-
-	  statusSection.classList.add("hidden");
-	  toggleStatusBtn.classList.add("hidden");
-	  statusTableWrap.classList.add("hidden");
-	  statusTableWrap.innerHTML = "";
-	}
+    renderStatusSection();
 
     // קודם תמיד מציגים את פרטי היעל
     nameInput.value = userData.person.nameHe || "";
@@ -196,6 +268,9 @@ async function checkBadge() {
     checkBtn.classList.add("hidden");
     resetBtn.classList.remove("hidden");
 	closeFormBtn.classList.remove("hidden");
+    deleteRequestBtn.classList.remove("hidden");
+    deleteAllRequestsBtn.classList.remove("hidden");
+    validateDeleteButtons();
 
     emailInput.disabled = false;
     publishInput.disabled = false;
@@ -384,6 +459,7 @@ function validateReadyToSubmit() {
     !requestBusy;
 
   submitBtn.disabled = !formReady;
+  validateDeleteButtons();
 
   if (actionNeeded && !requestBusy) {
     lockStatusTableForPendingUpdate();
@@ -394,6 +470,15 @@ function validateReadyToSubmit() {
   if (!submitBtn.classList.contains("busy-blink")) {
     updateSubmitButtonText();
   }
+}
+
+function validateDeleteButtons() {
+  if (!deleteRequestBtn || !deleteAllRequestsBtn) {
+    return;
+  }
+
+  deleteRequestBtn.disabled = !canDeleteSelectedRequest();
+  deleteAllRequestsBtn.disabled = !canDeleteAnyRequest();
 }
 
 function isValidEmail(email) {
