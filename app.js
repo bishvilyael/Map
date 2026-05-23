@@ -1,0 +1,399 @@
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbyEK1-fFb26g3TJbVHwao3yoY7mUOFCaeBA9TcqRkts0A94CLEXlBH-_uehP-LJK3mvYA/exec";
+const POINTS_JSON_URL = "./badge-points-count.json";
+
+const badgeInput = document.getElementById("badgeNo");
+const nameInput = document.getElementById("nameHe");
+const emailInput = document.getElementById("email");
+const publishInput = document.getElementById("publishAllowed");
+
+const checkBtn = document.getElementById("checkBtn");
+const resetBtn = document.getElementById("resetBtn");
+const updateEmailBtn = document.getElementById("updateEmailBtn");
+const submitBtn = document.getElementById("submitBtn");
+
+const msg = document.getElementById("msg");
+const pointsInfo = document.getElementById("pointsInfo");
+const publishHint = document.getElementById("publishHint");
+
+const statusSection = document.getElementById("statusSection");
+const toggleStatusBtn = document.getElementById("toggleStatusBtn");
+const statusTableWrap = document.getElementById("statusTableWrap");
+const selectedReqTitle = document.getElementById("selectedReqTitle");
+const closeFormBtn = document.getElementById("closeFormBtn");
+const formBox = document.querySelector(".box");
+
+
+let selectedInitialPublishAllowed = null;
+let requestBusy = false;
+let pointsData = {};
+let currentBadgeNo = null;
+let originalEmail = "";
+let formReady = false;
+let currentPointCount = 0;
+let currentChildCount = 0;
+let publishTouched = false;
+let currentStatusList = [];
+let selectedReqId = null;
+
+init();
+
+async function init() {
+  lockForm();
+  await loadPointsJson();
+}
+
+async function loadPointsJson() {
+  try {
+    const res = await fetch(POINTS_JSON_URL);
+    pointsData = await res.json();
+  } catch (err) {
+    showError("שגיאה בטעינת נתוני הנקודות. לא ניתן לשלוח בקשה כרגע.");
+    checkBtn.disabled = true;
+  }
+}
+
+function lockForm() {
+  badgeInput.disabled = false;
+  checkBtn.disabled = false;
+
+  nameInput.disabled = true;
+  emailInput.disabled = true;
+  publishInput.disabled = true;
+  updateEmailBtn.disabled = true;
+  submitBtn.disabled = true;
+
+  nameInput.value = "";
+  emailInput.value = "";
+  emailInput.placeholder = "";
+  publishInput.checked = false;
+
+  pointsInfo.textContent = "";
+  publishHint.classList.add("hidden");
+  publishHint.textContent = "";
+
+  currentBadgeNo = null;
+  originalEmail = "";
+  formReady = false;
+  currentPointCount = 0;
+  currentChildCount = 0;
+  publishTouched = false;
+  currentStatusList = [];
+  statusSection.classList.add("hidden");
+  statusTableWrap.classList.add("hidden");
+  statusTableWrap.innerHTML = "";
+  toggleStatusBtn.textContent = "הצג סטטוס בקשות";
+  toggleStatusBtn.classList.add("hidden");
+  selectedReqId = null;
+  selectedReqTitle.textContent = "";
+  closeFormBtn.classList.add("hidden");
+}
+
+checkBtn.addEventListener("click", checkBadge);
+
+badgeInput.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    checkBadge();
+  }
+});
+
+resetBtn.addEventListener("click", function () {
+  badgeInput.value = "";
+  resetBtn.classList.add("hidden");
+  checkBtn.classList.remove("hidden");
+  clearMsg();
+  lockForm();
+  badgeInput.focus();
+});
+
+emailInput.addEventListener("input", function () {
+  updateEmailHint();
+  validateReadyToSubmit();
+  validateReadyToUpdateEmail();
+});
+
+
+publishInput.addEventListener("change", function () {
+  publishTouched = isPublishChanged();
+  updatePublishHint();
+  validateReadyToSubmit();
+});
+
+toggleStatusBtn.addEventListener("click", function () {
+  if (statusTableWrap.classList.contains("hidden")) {
+    statusTableWrap.classList.remove("hidden");
+    toggleStatusBtn.textContent = "הסתר סטטוס בקשות";
+  } else {
+    statusTableWrap.classList.add("hidden");
+    toggleStatusBtn.textContent = "הצג סטטוס בקשות";
+  }
+});
+closeFormBtn.addEventListener("click", function () {
+  window.close();
+
+  if (formBox) {
+    formBox.innerHTML = "<h1>הטופס נסגר</h1><div class='msg ok'>אפשר לסגור את הלשונית בדפדפן.</div>";
+  }
+});
+async function checkBadge() {
+  const badgeNo = badgeInput.value.trim();
+
+  clearMsg();
+  pointsInfo.textContent = "";
+
+  if (!badgeNo) {
+    showError("יש להזין מספר יעל");
+    return;
+  }
+
+  checkBtn.disabled = true;
+  checkBtn.textContent = "בודק...";
+  checkBtn.classList.add("busy-blink");
+
+  try {
+    const userRes = await fetch(
+      API_URL + "?badgeNo=" + encodeURIComponent(badgeNo),
+    );
+    const userData = await userRes.json();
+
+    if (!userData.ok || !userData.found || !userData.person) {
+      showError("מספר יעל לא נמצא ברשימה. לא ניתן להמשיך.");
+      return;
+    }
+	currentStatusList = Array.isArray(userData.requestStatusList)
+	  ? userData.requestStatusList
+	  : [];
+
+	if (currentStatusList.length > 0) {
+	  selectedReqId = currentStatusList[0].reqId;
+	  updateSelectedReqTitle();
+
+	  statusSection.classList.remove("hidden");
+	  toggleStatusBtn.classList.remove("hidden");
+	  toggleStatusBtn.textContent = "הסתר סטטוס בקשות";
+
+	  statusTableWrap.classList.remove("hidden");
+	  statusTableWrap.innerHTML = buildStatusTableHtml(currentStatusList);
+	} else {
+	  selectedReqId = null;
+	  updateSelectedReqTitle();
+
+	  statusSection.classList.add("hidden");
+	  toggleStatusBtn.classList.add("hidden");
+	  statusTableWrap.classList.add("hidden");
+	  statusTableWrap.innerHTML = "";
+	}
+
+    // קודם תמיד מציגים את פרטי היעל
+    nameInput.value = userData.person.nameHe || "";
+    emailInput.value = userData.person.email || "";
+    originalEmail = emailInput.value.trim();
+
+    badgeInput.disabled = true;
+    checkBtn.classList.add("hidden");
+    resetBtn.classList.remove("hidden");
+	closeFormBtn.classList.remove("hidden");
+
+    emailInput.disabled = false;
+    publishInput.disabled = false;
+	
+	
+
+	const selectedRequest = getSelectedStatusRequest();
+
+	if (selectedRequest && selectedRequest.publishAllowed) {
+	  publishInput.checked = selectedRequest.publishAllowed === "כן";
+	} else {
+	  publishInput.checked = false;
+	}
+
+	setSelectedPublishBaseline();
+
+	publishHint.classList.remove("hidden");
+	updatePublishHint();
+
+    if (!emailInput.value.trim()) {
+      emailInput.placeholder = "חובה לרשום כתובת מייל תקינה";
+    }
+
+    const points = pointsData[badgeNo];
+	const parentCount = points ? Number(points.parent || 0) : 0;
+	const childrenCount = points ? Number(points.children || 0) : 0;
+
+	currentPointCount = parentCount;
+	currentChildCount = childrenCount;
+    // אם אין נקודות — הפרטים נשארים מוצגים, אבל לא מאפשרים שליחה
+    if (parentCount === 0 && childrenCount === 0) {
+      currentBadgeNo = null;
+      pointsInfo.textContent = "לא נמצאו נקודות עבור מספר יעל זה.";
+      validateReadyToUpdateEmail();
+      submitBtn.disabled = true;
+      showError("פרטי היעל נמצאו, אך לא נמצאו נקודות. לא ניתן לשלוח בקשה.");
+      return;
+    }
+
+    // רק אם יש נקודות — מאפשרים המשך רגיל
+    currentBadgeNo = badgeNo;
+
+    if (childrenCount > 0) {
+      pointsInfo.textContent =
+        "נמצאו " +
+        parentCount +
+        " נקודות שלך במפה ועוד " +
+        childrenCount +
+        " נלווים.";
+    } else {
+      pointsInfo.textContent = "נמצאו " + parentCount + " נקודות שלך במפה.";
+    }
+
+    validateReadyToUpdateEmail();
+
+    showOk("הפרטים נמצאו. ניתן להשלים אימייל ולשלוח בקשה.");
+
+    validateReadyToSubmit();
+
+	} catch (err) {
+	  if (currentBadgeNo || nameInput.value.trim()) {
+		console.error("post-checkBadge UI error:", err);
+		return;
+	  }
+
+	  console.error("checkBadge error:", err);
+	  showError("שגיאה בבדיקת מספר יעל: " + (err.message || err));
+	}
+	
+   finally {
+    checkBtn.disabled = false;
+    checkBtn.textContent = "בדיקה";
+	checkBtn.classList.remove("busy-blink");
+  }
+}
+updateEmailBtn.addEventListener("click", async function () {
+  const email = emailInput.value.trim();
+
+  if (!currentBadgeNo || !isValidEmail(email)) {
+    showError("יש לרשום כתובת מייל תקינה לפני עדכון");
+    return;
+  }
+
+  updateEmailBtn.disabled = true;
+  updateEmailBtn.textContent = "מעדכן...";
+  updateEmailBtn.classList.add("busy-blink");
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "updateEmail",
+        badgeNo: currentBadgeNo,
+        email: email,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      showError("עדכון האימייל נכשל: " + (data.error || ""));
+      return;
+    }
+
+    originalEmail = email;
+    showOk("האימייל עודכן ברשימה");
+  } catch (err) {
+    showError("שגיאה בעדכון האימייל: " + (err.message || err));
+  } finally {
+    validateReadyToUpdateEmail();
+    updateEmailBtn.textContent = "עדכון אימייל";
+	updateEmailBtn.classList.remove("busy-blink");
+    validateReadyToSubmit();
+  }
+});
+submitBtn.addEventListener("click", async function () {
+  validateReadyToSubmit();
+
+  if (!formReady) {
+    showError("אין שינוי שמצריך שליחה או עדכון");
+    return;
+  }
+
+  const email = emailInput.value.trim();
+  const baseText = getSubmitButtonBaseText();
+  let finalMessage = "";
+  let finalError = "";
+
+  clearMsg();
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = baseText + "...";
+  submitBtn.classList.add("busy-blink");
+  lockStatusTable();
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "submitRequest",
+        badgeNo: currentBadgeNo,
+        nameHe: nameInput.value.trim(),
+        email: email,
+        publishAllowed: publishInput.checked,
+        publishTouched: isPublishChanged(),
+        selectedReqId: selectedReqId,
+        pointCount: currentPointCount,
+        childCount: currentChildCount,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      finalError = baseText + " נכשלה: " + (data.error || data.notifyError || "");
+      return;
+    }
+
+    await refreshCurrentBadgeStatus(data.reqId);
+    finalMessage = data.message || "הבקשה טופלה בהצלחה";
+
+  } catch (err) {
+    finalError = "שגיאה בביצוע הפעולה: " + (err.message || err);
+  } finally {
+    submitBtn.classList.remove("busy-blink");
+    unlockStatusTable();
+    validateReadyToSubmit();
+
+    if (finalError) {
+      showError(finalError);
+    } else if (finalMessage) {
+      showOk(finalMessage);
+    }
+  }
+});
+
+function validateReadyToSubmit() {
+  const email = emailInput.value.trim();
+  const actionNeeded = hasSubmitActionNeeded();
+
+  formReady =
+    currentBadgeNo !== null &&
+    nameInput.value.trim() !== "" &&
+    isValidEmail(email) &&
+    actionNeeded &&
+    !requestBusy;
+
+  submitBtn.disabled = !formReady;
+
+  if (actionNeeded && !requestBusy) {
+    lockStatusTableForPendingUpdate();
+  } else if (!requestBusy) {
+    unlockStatusTableForPendingUpdate();
+  }
+
+  if (!submitBtn.classList.contains("busy-blink")) {
+    updateSubmitButtonText();
+  }
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
